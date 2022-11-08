@@ -98,12 +98,11 @@ def process_record(record):
 # crawl-data/CC-NEWS/yyyy/mm/CC-NEWS-yyyymmddHHMMSS-nnnnn.warc.gz
 uri = 's3a://commoncrawl/crawl-data/CC-NEWS/2018/06/CC-NEWS-20180614000923-00652.warc.gz'
 
-input_data = spark.sparkContext.textFile(uri)
+input_data = spark.sparkContext.parallelize([uri])
 
 output = input_data.mapPartitionsWithIndex(process_warcs) \
     .reduceByKey(lambda a, b: a + b) \
-    .take(10) \
-    .collect()
+    .take(10) 
 
 # tmp = spark.createDataFrame(output)
 

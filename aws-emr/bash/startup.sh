@@ -9,12 +9,8 @@ cluster_dns=$(aws emr describe-cluster \
                   jq '.Cluster.MasterPublicDnsName' | \
            tr -d '"')
 
-scp -i ./aws-emr/terraform/spark-cluster.pem requirements.txt "hadoop@${cluster_dns}":~/.
-
 scp -i ./aws-emr/terraform/spark-cluster.pem ./sandbox/news_test.py "hadoop@${cluster_dns}":~/.
 
 scp -i ./aws-emr/terraform/spark-cluster.pem ./sandbox/sandbox.cfg "hadoop@${cluster_dns}":~/.
 
 ssh -i ./aws-emr/terraform/spark-cluster.pem "hadoop@${cluster_dns}"
-
-pip3.7 install -r ./requirements.txt
