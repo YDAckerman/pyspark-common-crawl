@@ -39,12 +39,10 @@ resource "aws_emr_cluster" "spark-cluster" {
     instance_count = 2
   }
 
-  /*
   bootstrap_action {
     path = "s3://capstone-emr-boostrap-action/bootstrap.sh"
     name = "my_bootstrap_actions"
   } 
-  */
 
   service_role = "EMR_DefaultRole"
 }
