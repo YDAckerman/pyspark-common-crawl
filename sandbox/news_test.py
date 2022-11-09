@@ -8,6 +8,7 @@ from tempfile import SpooledTemporaryFile, TemporaryFile
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import split, col, explode, desc
+from pyspark.sql.types import StructType, StructField, StringType
 
 import boto3
 import botocore
@@ -59,7 +60,6 @@ def process_warcs(_id, iterator):
 
 data_url_pattern = re.compile('^(s3a):(?://([^/]*))?/(.*)')
 
-
 def fetch_warc(uri):
     uri_match = data_url_pattern.match(uri)
     warctemp = TemporaryFile(mode='w+b')
@@ -89,21 +89,38 @@ def iterate_records(_warc_uri, archive_iterator):
 def process_record(record):
     if record.rec_type != 'response':
         # skip over WARC request or metadata records
-        yield 'None', 1
+        return
     # page = record.content_stream.read()
-    uri = record.rec_headers['WARC-Target-URI']
-    dom = urlparse(uri).netloc
-    yield dom, 1
+    html = record.content_stream().read()
+    pub_date = find_date(html)
+    soup = BeautifulSoup(html, features='html.parser')
+    for script in soup(["script", "style"]):
+        script.extract()
+    text = soup.get_text()
+    dom = urlparse(record.rec_headers['WARC-Target-URI']).netloc
+    yield dom, pub_date, text
 
-# crawl-data/CC-NEWS/yyyy/mm/CC-NEWS-yyyymmddHHMMSS-nnnnn.warc.gz
-uri = 's3a://commoncrawl/crawl-data/CC-NEWS/2018/06/CC-NEWS-20180614000923-00652.warc.gz'
+cc_bucket = 'commoncrawl'
+cc_segment_paths = 'crawl-data/*/segment.paths.gz'
+news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
 
-input_data = spark.sparkContext.parallelize([uri])
+# NOTE s3a -> s3 on EMR
+cc_segment_paths = spark \
+    .sparkContext \
+    .textFile(f's3a://{cc_bucket}/{cc_segment_paths}')
 
-output = input_data.mapPartitionsWithIndex(process_warcs) \
-    .reduceByKey(lambda a, b: a + b) \
-    .take(10) 
+news_input = spark \
+    .sparkContext \
+    .textFile(f's3a://{cc_bucket}/{news_paths}')
+news_input = news_input.sample(False, 1/news_input.count())
 
-# tmp = spark.createDataFrame(output)
+output_schema = StructType([
+        StructField("domain", StringType(), True),
+        StructField("publish_date", StringType(), True),
+        StructField("article_text", StringType(), True)
+    ])
 
-print(output)
+news = news_input.mapPartitionsWithIndex(process_warcs)
+news_df = spark.createDataFrame(news, schema=output_schema)
+
+
