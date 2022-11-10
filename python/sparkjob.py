@@ -12,14 +12,12 @@ import botocore
 from warcio.archiveiterator import ArchiveIterator
 from warcio.recordloader import ArchiveLoadFailed
 
-from pyspark.sql import SparkSession
 
 LOGGING_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
 
 class MySparkJob():
 
-    data_url_pattern = re.compile('^(s3a):(?://([^/]*))?/(.*)')
     log_level = 'INFO'
 
     def __init__(self, s3_bucket, warc_gz_path,
@@ -68,39 +66,34 @@ class MySparkJob():
         return logging.getLogger(self.name)
 
     def process_warcs(self, _id, iterator):
-        for uri in iterator:
-            stream = self.fetch_warc(uri)
+        for path in iterator:
+            stream = self.fetch_warc(path)
             if not stream:
                 continue
             try:
                 archive_iterator = ArchiveIterator(stream)
-                for res in self.iterate_records(uri, archive_iterator):
+                for res in self.iterate_records(path, archive_iterator):
                     yield res
             except ArchiveLoadFailed as exception:
-                print('Invalid WARC: {} - {}'.format(uri, exception))
+                print('Invalid WARC: {} - {}'.format(path, exception))
             finally:
                 stream.close()
 
-    def fetch_warc(self, uri):
-        uri_match = self.data_url_pattern.match(uri)
+    def fetch_warc(self, path):
         warctemp = TemporaryFile(mode='w+b')
         stream = None
-        if not uri_match:
-            warctemp.close()
-            return stream
-        (scheme, netloc, path) = uri_match.groups()
-        self.get_logger().info('Reading from S3 {}'.format(uri))
+        self.get_logger().info('Reading from S3 {}'.format(path))
         try:
-            self.s3_client.download_fileobj(netloc, path, warctemp)
+            self.s3_client.download_fileobj(self.s3_bucket, path, warctemp)
             warctemp.seek(0)
             stream = warctemp
         except botocore.client.ClientError as exception:
             self.get_logger().error(
-                'Failed to download {}: {}'.format(uri, exception))
+                'Failed to download {}: {}'.format(path, exception))
             warctemp.close()
         return stream
 
-    def iterate_records(self, _warc_uri, archive_iterator):
+    def iterate_records(self, _warc_path, archive_iterator):
         for record in archive_iterator:
             for res in self.process_record(record):
                 yield res

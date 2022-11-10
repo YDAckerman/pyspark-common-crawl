@@ -19,7 +19,6 @@ class NewsJob(MySparkJob):
 
     def process_record(record):
         if record.rec_type != 'response':
-            # skip over WARC request or metadata records
             return
         html = record.content_stream().read()
         pub_date = find_date(html)

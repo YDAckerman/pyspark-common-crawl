@@ -30,6 +30,10 @@ from urllib.parse import urlparse
 # from sparknlp.pretrained import PretrainedPipeline
 # import sparknlp
 
+cc_bucket = 'commoncrawl'
+cc_segment_paths = 'crawl-data/*/segment.paths.gz'
+news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
+
 config = configparser.ConfigParser()
 config.read('sandbox.cfg')
 
@@ -60,22 +64,19 @@ def process_warcs(_id, iterator):
 
 data_url_pattern = re.compile('^(s3a):(?://([^/]*))?/(.*)')
 
-def fetch_warc(uri):
-    uri_match = data_url_pattern.match(uri)
+
+def fetch_warc(path):
+    # path = 'crawl-data/CC-NEWS/2022/03/CC-NEWS-20220325175840-00065.warc.gz'
     warctemp = TemporaryFile(mode='w+b')
     stream = None
-    if not uri_match:
-        warctemp.close()
-        return stream
-    (scheme, netloc, path) = uri_match.groups()
     try:
-        boto3.client('s3').download_fileobj(netloc,
+        boto3.client('s3').download_fileobj(cc_bucket,
                                             path,
                                             warctemp)
         warctemp.seek(0)
         stream = warctemp
     except botocore.client.ClientError as exception:
-        print('Failed to download {}: {}'.format(uri, exception))
+        print('Failed to download {}: {}'.format(path, exception))
         warctemp.close()
     return stream
 
@@ -100,9 +101,17 @@ def process_record(record):
     dom = urlparse(record.rec_headers['WARC-Target-URI']).netloc
     yield dom, pub_date, text
 
-cc_bucket = 'commoncrawl'
-cc_segment_paths = 'crawl-data/*/segment.paths.gz'
-news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
+# def process_record(record):
+#     # record = next(archive_iterator)
+#     if record.rec_type != 'response':
+#         # skip over WARC request or metadata records
+#         return
+#     # page = record.content_stream.read()
+#     dom = urlparse(record.rec_headers['WARC-Target-URI']).netloc
+#     yield dom, 1
+
+
+
 
 # NOTE s3a -> s3 on EMR
 cc_segment_paths = spark \
