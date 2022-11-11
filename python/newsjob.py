@@ -8,14 +8,12 @@ from sparkjob import MySparkJob
 
 import pyspark.sql.functions as F
 from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import split, col, explode, desc
+from pyspark.sql.functions import col, explode, arrays_zip
 
 import sparknlp
 from sparknlp.base import *
 from sparknlp.annotator import *
 from pyspark.ml import Pipeline
-
-import pdb
 
 class NewsJob(MySparkJob):
 
@@ -108,18 +106,37 @@ class NewsJob(MySparkJob):
         news_df = session.createDataFrame(news_rdd,
                                           schema=self.output_schema)
 
-        news_df = news_df.withColumn('publish_date',
-                                     to_date(col('publish_date',"yyyy-MM-dd"))
         news_df = language_detect_pipeline().fit(news_df).transform(data)
 
         sites = news_df.select('domain', 'language.result').distinct()
+
+        sites.write.mode('overwrite').parquet(self.output_path + 'sites_table/')
                                      
         dates = news_df.select('publish_date',
-                               to_date(col('publish_date',"yyyy-MM-dd")) \
+                               to_date(col('publish_date'),"yyyy-MM-dd") \
                                .withColumn('day', F.dayofmonth('publish_date')) \
                                .withColumn('year', F.year('publish_date')) \
                                .withColumn('month', F.month('publish_date')) \
                                .distinct()
 
-        news_df = keyword_extract_pipeline().fit(news_df).transform(data)
+        dates.write.mode('overwrite').parquet(self.output_path + 'dates_table/')
+
+        keywords = keyword_extract_pipeline() \
+                               .fit(news_df) \
+                               .transform(data) \
+                               .selectExpr('domain',
+                                           'publish_date',
+                                           'explode(arrays_zip(keywords.result, '
+                                           'keywords.metadata)) as resultTuples') \
+                               .selectExpr('domain',
+                                           'publish_date',
+                                           "resultTuples['0'] as keyword",
+                                           "resultTuples['1'].score as score")
+
+        keywords.write \
+                .partitionBy('domain') \
+                .mode('overwrite') \
+                .parquet(self.output_path + 'keywords_table/')
+
+        pass
 
