@@ -21,9 +21,14 @@ from bs4 import BeautifulSoup
 
 from htmldate import find_date # may need to (pip uninstall lxml; pip install lxml)
 
-from langdetect import detect
+# from langdetect import detect
 
 from urllib.parse import urlparse
+
+# import sparknlp # may need to (pip cache purge; pip install numpy --upgrade)
+# from sparknlp.base import *
+# from sparknlp.annotator import *
+# from pyspark.ml import Pipeline
 
 # from sparknlp.base import *
 # from sparknlp.annotator import *
@@ -35,7 +40,7 @@ cc_segment_paths = 'crawl-data/*/segment.paths.gz'
 news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
 
 config = configparser.ConfigParser()
-config.read('sandbox.cfg')
+config.read('./sandbox.cfg')
 
 os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
 os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
@@ -61,10 +66,6 @@ def process_warcs(_id, iterator):
         finally:
             stream.close()
 
-
-data_url_pattern = re.compile('^(s3a):(?://([^/]*))?/(.*)')
-
-
 def fetch_warc(path):
     # path = 'crawl-data/CC-NEWS/2022/03/CC-NEWS-20220325175840-00065.warc.gz'
     warctemp = TemporaryFile(mode='w+b')
@@ -86,7 +87,7 @@ def iterate_records(_warc_uri, archive_iterator):
         for res in process_record(record):
             yield res
 
-
+            
 def process_record(record):
     if record.rec_type != 'response':
         # skip over WARC request or metadata records
@@ -110,9 +111,6 @@ def process_record(record):
 #     dom = urlparse(record.rec_headers['WARC-Target-URI']).netloc
 #     yield dom, 1
 
-
-
-
 # NOTE s3a -> s3 on EMR
 cc_segment_paths = spark \
     .sparkContext \
@@ -132,4 +130,4 @@ output_schema = StructType([
 news = news_input.mapPartitionsWithIndex(process_warcs)
 news_df = spark.createDataFrame(news, schema=output_schema)
 
-
+news_df.take(5)

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+aws s3 cp ./aws-emr/bash/bootstrap.sh \
+    s3://capstone-emr-boostrap-action/ \
+    --profile udac_de_cap
+
 cluster_id=$(aws emr list-clusters --profile udac_de_cap --region us-east-1 | \
                  jq '.Clusters | .[] | select(.Status.State == "WAITING") | .Id' | \
           tr -d '"')
