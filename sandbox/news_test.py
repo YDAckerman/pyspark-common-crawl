@@ -1,14 +1,17 @@
 import configparser
 import os
-import re
 
-from io import BytesIO
-from tempfile import SpooledTemporaryFile, TemporaryFile
+from tempfile import TemporaryFile
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import split, col, explode, desc
 from pyspark.sql.types import StructType, StructField, StringType
+
+import sparknlp # may need to (pip cache purge; pip install numpy --upgrade)
+from sparknlp.base import *
+from sparknlp.annotator import *
+from pyspark.ml import Pipeline
 
 import boto3
 import botocore
@@ -47,7 +50,7 @@ os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
 
 spark = SparkSession.builder \
     .config("spark.jars.packages",
-            "com.johnsnowlabs.nlp:spark-nlp_2.11:1.8.2") \
+            "com.johnsnowlabs.nlp:spark-nlp_2.12:4.2.3") \
     .config('spark.jars.packages', 'org.apache.hadoop:hadoop-aws:3.3.4') \
     .getOrCreate()
 
@@ -129,5 +132,36 @@ output_schema = StructType([
 
 news = news_input.mapPartitionsWithIndex(process_warcs)
 news_df = spark.createDataFrame(news, schema=output_schema)
+
+
+
+
+documentAssembler = DocumentAssembler() \
+    .setInputCol("text") \
+    .setOutputCol("document")
+
+sentenceDetector = SentenceDetector() \
+    .setInputCols(["document"]) \
+    .setOutputCol("sentence")
+
+token = Tokenizer() \
+    .setInputCols(["sentence"]) \
+    .setOutputCol("token") \
+    .setContextChars(["(", "]", "?", "!", ".", ","])
+
+keywords = YakeKeywordExtraction() \
+    .setInputCols(["token"]) \
+    .setOutputCol("keywords") \
+    .setThreshold(0.6) \
+    .setMinNGrams(2) \
+    .setNKeywords(10)
+
+pipeline = Pipeline().setStages([
+    documentAssembler,
+    sentenceDetector,
+    token,
+    keywords
+])
+
 
 news_df.take(5)

@@ -16,10 +16,9 @@ provider "aws" {
 
 resource "aws_emr_cluster" "spark-cluster" {
   name          = "spark-cluster"
-  release_label = "emr-5.36.0"
+  release_label = "emr-6.2.0"
   # log_uri = "s3://capstone-bootstrap-logging"
-  applications  = ["Hadoop", "Spark", "JupyterEnterpriseGateway",
-    "Livy", "Hive"]
+  applications  = ["Hadoop", "Spark", "Hive"]
   
   ec2_attributes {
     subnet_id = "subnet-0ab4c2471136f469c"
@@ -44,6 +43,31 @@ resource "aws_emr_cluster" "spark-cluster" {
     name = "my_bootstrap_actions"
   } 
 
+  configurations_json = <<EOF
+  [
+{
+  "Classification": "spark-env",
+  "Configurations": [{
+    "Classification": "export",
+    "Properties": {
+      "PYSPARK_PYTHON": "/usr/bin/python3"
+    }
+  }]
+},
+{
+  "Classification": "spark-defaults",
+    "Properties": {
+      "spark.yarn.stagingDir": "hdfs:///tmp",
+      "spark.yarn.preserve.staging.files": "true",
+      "spark.kryoserializer.buffer.max": "2000M",
+      "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+      "spark.driver.maxResultSize": "0",
+      "spark.jars.packages": "com.johnsnowlabs.nlp:spark-nlp_2.12:4.2.3"
+    }
+}
+  ]
+EOF
+  
   service_role = "EMR_DefaultRole"
 }
 

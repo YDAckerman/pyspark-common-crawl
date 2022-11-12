@@ -15,6 +15,8 @@ from sparknlp.base import *
 from sparknlp.annotator import *
 from pyspark.ml import Pipeline
 
+# import pdb
+
 class NewsJob(MySparkJob):
 
     name = "NewsJob"
@@ -73,13 +75,13 @@ class NewsJob(MySparkJob):
             .setInputCols(["sentence"]) \
             .setOutputCol("token") \
             .setContextChars(["(", "]", "?", "!", ".", ","])
-
+        
         keywords = YakeKeywordExtraction() \
             .setInputCols(["token"]) \
             .setOutputCol("keywords") \
-            .setThreshold(0.6) \ # from example documentation
-            .setMinNGrams(2) \ # default
-            .setNKeywords(10) # might want to extract more
+            .setThreshold(0.6) \ 
+            .setMinNGrams(2) \ 
+            .setNKeywords(10) 
 
         pipeline = Pipeline().setStages([
             documentAssembler,
@@ -94,34 +96,40 @@ class NewsJob(MySparkJob):
 
         # pdb.set_trace()
 
+        # get all warc paths
         input_data = session \
             .sparkContext \
             .textFile(f's3a://{self.s3_bucket}/{self.warc_gz_path}')
 
-        # when running locally, keep the data size managable.
+        # when running locally, operate on subset of paths
         if self.local_test:
-            input_data = input_data.sample(False, 1/input_data.count())
+            input_data = session.sparkContext.parallelize(input_data.take(1))
 
+        # process the warcs
         news_rdd = input_data.mapPartitionsWithIndex(self.process_warcs)
+
+        # create a new data frame from the results
         news_df = session.createDataFrame(news_rdd,
                                           schema=self.output_schema)
 
-        news_df = language_detect_pipeline().fit(news_df).transform(data)
+        # perform language detection
+        news_df = self.language_detect_pipeline().fit(news_df).transform(data)
 
+        # create sites table and write to s3
         sites = news_df.select('domain', 'language.result').distinct()
-
         sites.write.mode('overwrite').parquet(self.output_path + 'sites_table/')
-                                     
+
+        # create dates table and write to s3
         dates = news_df.select('publish_date',
                                to_date(col('publish_date'),"yyyy-MM-dd") \
                                .withColumn('day', F.dayofmonth('publish_date')) \
                                .withColumn('year', F.year('publish_date')) \
                                .withColumn('month', F.month('publish_date')) \
                                .distinct()
-
         dates.write.mode('overwrite').parquet(self.output_path + 'dates_table/')
 
-        keywords = keyword_extract_pipeline() \
+        # perform keyword extraction, create keywords table, write to s3
+        keywords = self.keyword_extract_pipeline() \
                                .fit(news_df) \
                                .transform(data) \
                                .selectExpr('domain',
@@ -132,7 +140,6 @@ class NewsJob(MySparkJob):
                                            'publish_date',
                                            "resultTuples['0'] as keyword",
                                            "resultTuples['1'].score as score")
-
         keywords.write \
                 .partitionBy('domain') \
                 .mode('overwrite') \
@@ -140,3 +147,5 @@ class NewsJob(MySparkJob):
 
         pass
 
+if __name__ == "__main__":
+    pass

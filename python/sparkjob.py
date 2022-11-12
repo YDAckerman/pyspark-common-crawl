@@ -1,6 +1,6 @@
 
-import re
-import logging
+# import re
+# import logging
 
 from tempfile import TemporaryFile
 
@@ -14,57 +14,27 @@ from warcio.recordloader import ArchiveLoadFailed
 
 import configparser
 
-LOGGING_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
-
 
 class MySparkJob():
 
     name = 'SparkJob'
-    log_level = 'INFO'
     s3client = None
 
     def __init__(self, s3_bucket, warc_gz_path, cfg_path,
-                 log_level=None, local_test=False):
+                 output_path, local_test=False):
 
         self.s3_bucket = s3_bucket
         self.warc_gz_path = warc_gz_path
+        self.output_path = output_path
         self.local_test = local_test
 
         self.config = configparser.ConfigParser()
         self.config.read(cfg_path)
 
-        if log_level:
-            self.init_logging(log_level)
-        else:
-            self.init_logging(self.log_level)
-
     def get_s3_client(self):
         if not self.s3client:
             self.s3client = boto3.client('s3', use_ssl=False)
         return self.s3client
-
-    def init_logging(self, level=None, session=None):
-        if level:
-            self.log_level = level
-        else:
-            level = self.log_level
-        logging.basicConfig(level=level,
-                            format=LOGGING_FORMAT)
-        logging.getLogger(self.name).setLevel(level)
-        if session:
-            session.sparkContext.setLogLevel(level)
-
-    # def get_logger(self, session=None):
-    #     """Get logger from SparkSession or (if None) from logging module"""
-    #     if not session:
-    #         try:
-    #             session = SparkSession.getActiveSession()
-    #         except AttributeError:
-    #             pass
-    #     if session:
-    #         return session._jvm.org.apache.log4j.LogManager \
-    #                     .getLogger(self.name)
-    #     return logging.getLogger(self.name)
 
     def process_warcs(self, _id, iterator):
         for path in iterator:

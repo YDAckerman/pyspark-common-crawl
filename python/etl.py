@@ -1,18 +1,19 @@
 import argparse
-import configparser
-import os
+from newsjob import NewsJob
 
 
-# get cfg path from args or load default
-parser = argparse.ArgumentParser()
-parser.add_argument("--cfg_path", help="Path to your aws config file.")
-args = parser.parse_args()
-config = configparser.ConfigParser()
-if args.cfg_path:
-    config.read(args.cfg_path)
-else:
-    config.read("aws.cfg")
+if __name__ == "__main__":
 
-# setup aws configuration
-os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
-os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
+    cc_bucket = 'commoncrawl'
+    news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
+    output_path = 's3a://commoncrawl-news-tables/'
+
+    # get cfg path from args or load default
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cfg_path", help="Path to your aws config file.")
+    args = parser.parse_args()
+
+    cfg_path = 'aws.cfg' if not args.cfg_path else args.cfg_path
+
+    NewsJob(cc_bucket, news_paths, cfg_path, output_path,
+            local_test=True).run()
