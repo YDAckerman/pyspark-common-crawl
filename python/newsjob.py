@@ -17,6 +17,7 @@ from pyspark.ml import Pipeline
 
 # import pdb
 
+
 class NewsJob(MySparkJob):
 
     name = "NewsJob"
@@ -75,13 +76,12 @@ class NewsJob(MySparkJob):
             .setInputCols(["sentence"]) \
             .setOutputCol("token") \
             .setContextChars(["(", "]", "?", "!", ".", ","])
-        
-        keywords = YakeKeywordExtraction() \
+
+        keywords = YakeKeywordExtraction(threshold=.6,
+                                         minNGrams=2,
+                                         nKeywords=10) \
             .setInputCols(["token"]) \
-            .setOutputCol("keywords") \
-            .setThreshold(0.6) \ 
-            .setMinNGrams(2) \ 
-            .setNKeywords(10) 
+            .setOutputCol("keywords")
 
         pipeline = Pipeline().setStages([
             documentAssembler,
@@ -113,7 +113,7 @@ class NewsJob(MySparkJob):
                                           schema=self.output_schema)
 
         # perform language detection
-        news_df = self.language_detect_pipeline().fit(news_df).transform(data)
+        news_df = self.language_detect_pipeline().fit(news_df).transform(news_df)
 
         # create sites table and write to s3
         sites = news_df.select('domain', 'language.result').distinct()
@@ -121,7 +121,7 @@ class NewsJob(MySparkJob):
 
         # create dates table and write to s3
         dates = news_df.select('publish_date',
-                               to_date(col('publish_date'),"yyyy-MM-dd") \
+                               F.to_date(col('publish_date'), "yyyy-MM-dd")) \
                                .withColumn('day', F.dayofmonth('publish_date')) \
                                .withColumn('year', F.year('publish_date')) \
                                .withColumn('month', F.month('publish_date')) \
@@ -131,7 +131,7 @@ class NewsJob(MySparkJob):
         # perform keyword extraction, create keywords table, write to s3
         keywords = self.keyword_extract_pipeline() \
                                .fit(news_df) \
-                               .transform(data) \
+                               .transform(news_df) \
                                .selectExpr('domain',
                                            'publish_date',
                                            'explode(arrays_zip(keywords.result, '
@@ -146,6 +146,7 @@ class NewsJob(MySparkJob):
                 .parquet(self.output_path + 'keywords_table/')
 
         pass
+
 
 if __name__ == "__main__":
     pass
