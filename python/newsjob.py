@@ -122,24 +122,25 @@ class NewsJob(MySparkJob):
         # create dates table and write to s3
         dates = news_df.select('publish_date',
                                F.to_date(col('publish_date'), "yyyy-MM-dd")) \
-                               .withColumn('day', F.dayofmonth('publish_date')) \
-                               .withColumn('year', F.year('publish_date')) \
-                               .withColumn('month', F.month('publish_date')) \
-                               .distinct()
-        dates.write.mode('overwrite').parquet(self.output_path + 'dates_table/')
+                       .withColumn('day', F.dayofmonth('publish_date')) \
+                       .withColumn('year', F.year('publish_date')) \
+                       .withColumn('month', F.month('publish_date')) \
+                       .distinct()
+        dates.write.mode('overwrite') \
+                   .parquet(self.output_path + 'dates_table/')
 
         # perform keyword extraction, create keywords table, write to s3
         keywords = self.keyword_extract_pipeline() \
-                               .fit(news_df) \
-                               .transform(news_df) \
-                               .selectExpr('domain',
-                                           'publish_date',
-                                           'explode(arrays_zip(keywords.result, '
-                                           'keywords.metadata)) as resultTuples') \
-                               .selectExpr('domain',
-                                           'publish_date',
-                                           "resultTuples['0'] as keyword",
-                                           "resultTuples['1'].score as score")
+                       .fit(news_df) \
+                       .transform(news_df) \
+                       .selectExpr('domain',
+                                   'publish_date',
+                                   'explode(arrays_zip(keywords.result, '
+                                   'keywords.metadata)) as resultTuples') \
+                       .selectExpr('domain',
+                                   'publish_date',
+                                   "resultTuples['0'] as keyword",
+                                   "resultTuples['1'].score as score")
         keywords.write \
                 .partitionBy('domain') \
                 .mode('overwrite') \
