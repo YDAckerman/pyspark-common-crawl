@@ -6,9 +6,8 @@ from htmldate import find_date
 
 from sparkjob import MySparkJob
 
-import pyspark.sql.functions as F
 from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import col, explode, arrays_zip
+from pyspark.sql.functions import col, explode, arrays_zip, to_date, dayofmonth, year, month
 
 import sparknlp
 from sparknlp.base import *
@@ -24,28 +23,45 @@ class NewsJob(MySparkJob):
 
     output_schema = StructType([
         StructField("domain", StringType(), True),
+        StructField("warc_date", StringType(), True),
         StructField("publish_date", StringType(), True),
         StructField("article_text", StringType(), True)
     ])
 
-    def process_record(record):
+    def process_record(self, record):
+        """
+        - extract the publish date
+        - extract the article text
+        - extract the warc read date
+        - extract the site domain
+        """
         if record.rec_type != 'response':
             return
+
         html = record.content_stream().read()
+        # get publish date
         pub_date = find_date(html)
+        # get article text
         soup = BeautifulSoup(html, features='html.parser')
         for script in soup(["script", "style"]):
             script.extract()
         text = soup.get_text()
+        # get warc date
+        warc_date = record.rec_headers['WARC-Date']
+        # get site domain
         dom = urlparse(record.rec_headers['WARC-Target-URI']).netloc
-        yield dom, pub_date, text
 
-    def language_detect_pipeline():
+        yield dom, warc_date, pub_date, text
+
+    def language_detect_pipeline(self):
         """
-        code citation here
+        Copied nearly verbatim from:
+        https://nlp.johnsnowlabs.com/docs/en/annotators#languagedetectordl
+
+        Creates pipeline to perform language detection
         """
         documentAssembler = DocumentAssembler() \
-            .setInputCol("text") \
+            .setInputCol("article_text") \
             .setOutputCol("document")
 
         languageDetector = LanguageDetectorDL.pretrained() \
@@ -60,12 +76,15 @@ class NewsJob(MySparkJob):
 
         return pipeline
 
-    def keyword_extract_pipeline():
+    def keyword_extract_pipeline(self):
         """
-        code citation here
+        Copied nearly verbatim from:
+        https://nlp.johnsnowlabs.com/docs/en/annotators#yakekeywordextraction
+
+        Creates pipeline to do keyword extraction
         """
         documentAssembler = DocumentAssembler() \
-            .setInputCol("text") \
+            .setInputCol("article_text") \
             .setOutputCol("document")
 
         sentenceDetector = SentenceDetector() \
@@ -113,21 +132,28 @@ class NewsJob(MySparkJob):
                                           schema=self.output_schema)
 
         # perform language detection
-        news_df = self.language_detect_pipeline().fit(news_df).transform(news_df)
+        news_df = self.language_detect_pipeline().fit(news_df) \
+                                                 .transform(news_df)
 
         # create sites table and write to s3
-        sites = news_df.select('domain', 'language.result').distinct()
-        sites.write.mode('overwrite').parquet(self.output_path + 'sites_table/')
+        sites = news_df \
+            .selectExpr('domain', 'language.result as languages') \
+            .distinct()
+        # sites.write \
+        #      .mode('overwrite').parquet(self.output_path + 'sites_table/')
 
         # create dates table and write to s3
-        dates = news_df.select('publish_date',
-                               F.to_date(col('publish_date'), "yyyy-MM-dd")) \
-                       .withColumn('day', F.dayofmonth('publish_date')) \
-                       .withColumn('year', F.year('publish_date')) \
-                       .withColumn('month', F.month('publish_date')) \
+        dates = news_df.select(col('publish_date'),
+                               to_date(col('publish_date'), "yyyy-MM-dd")
+                               .alias('date')) \
+                       .withColumn('day', dayofmonth('date')) \
+                       .withColumn('year', year('date')) \
+                       .withColumn('month', month('date')) \
                        .distinct()
-        dates.write.mode('overwrite') \
-                   .parquet(self.output_path + 'dates_table/')
+        dates.write \
+             .partitionBy('year', 'month') \
+             .mode('overwrite') \
+             .parquet(self.output_path + 'dates_table/')
 
         # perform keyword extraction, create keywords table, write to s3
         keywords = self.keyword_extract_pipeline() \
@@ -135,16 +161,18 @@ class NewsJob(MySparkJob):
                        .transform(news_df) \
                        .selectExpr('domain',
                                    'publish_date',
+                                   'warc_date',
                                    'explode(arrays_zip(keywords.result, '
                                    'keywords.metadata)) as resultTuples') \
                        .selectExpr('domain',
                                    'publish_date',
+                                   'warc_date',
                                    "resultTuples['0'] as keyword",
                                    "resultTuples['1'].score as score")
-        keywords.write \
-                .partitionBy('domain') \
-                .mode('overwrite') \
-                .parquet(self.output_path + 'keywords_table/')
+        # keywords.write \
+        #         .partitionBy('domain') \
+        #         .mode('overwrite') \
+        #         .parquet(self.output_path + 'keywords_table/')
 
         pass
 
