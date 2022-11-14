@@ -10,7 +10,8 @@ from htmldate import find_date
 from sparkjob import MySparkJob
 
 from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import col, explode, arrays_zip, to_date, dayofmonth, year, month
+from pyspark.sql.functions import col, explode, arrays_zip, to_date, \
+    dayofmonth, year, month, udf
 
 import sparknlp
 from sparknlp.base import *
@@ -149,6 +150,7 @@ class NewsJob(MySparkJob):
         - Get warc paths from s3
         - Partition and process warc paths
         - Transform results
+        - Get all metadata and filter down to news domains
         - Save to s3
         """
 
@@ -179,16 +181,24 @@ class NewsJob(MySparkJob):
         sites.write \
              .mode('overwrite').parquet(self.output_path + 'sites_table/')
 
+        # define function to remove www from domain
+        @udf(returnType=StringType())
+        def rm_www(s):
+            return re.sub('^www.', '', s)
+
+        # get news domains with www. prefix removed
+        news_domains = sites.select(rm_www('domain')
+                                    .alias('url_host_registered_domain')) \
+                            .distinct()
+
         # get metadata for each domain
         cc_index = session.read.parquet(f's3://{self.s3_bucket}/'
                                         '{self.index_path}')
-        news_domains = sites.select('domain').distinct().collect()
-        domains = []
-        for row in news_domains:
-            domains.append(re.sub('www.', '', row['domain']))
-        news_index = cc_index.filter(cc_index
-                                     .url_host_registered_domain
-                                     .isin(domains))
+
+        # filter metadata by news domains and save results to s3
+        news_index = cc_index.join(news_domains,
+                                   'url_host_registered_domain',
+                                   'leftsemi')
         news_index.write \
                   .mode('overwrite').parquet(self.output_path + 'index_table/')
 
