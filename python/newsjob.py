@@ -1,3 +1,6 @@
+import re
+from tabletest import TableTest
+
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
@@ -27,6 +30,11 @@ class NewsJob(MySparkJob):
         StructField("publish_date", StringType(), True),
         StructField("article_text", StringType(), True)
     ])
+
+    tests = [TableTest('sites_table/', ">", 0),
+             TableTest('dates_table/', ">", 0),
+             TableTest('keywords_table/', ">", 0),
+             TableTest('index_table/', ">", 0)]
 
     def process_record(self, record):
         """
@@ -96,11 +104,12 @@ class NewsJob(MySparkJob):
             .setOutputCol("token") \
             .setContextChars(["(", "]", "?", "!", ".", ","])
 
-        keywords = YakeKeywordExtraction(threshold=.6,
-                                         minNGrams=2,
-                                         nKeywords=10) \
+        keywords = YakeKeywordExtraction() \
             .setInputCols(["token"]) \
-            .setOutputCol("keywords")
+            .setOutputCol("keywords") \
+            .setThreshold(0.6) \
+            .setMinNGrams(2) \
+            .setNKeywords(5)
 
         pipeline = Pipeline().setStages([
             documentAssembler,
@@ -111,14 +120,42 @@ class NewsJob(MySparkJob):
 
         return pipeline
 
-    def run_job(self, session):
+    def run_tests(self, session):
 
-        # pdb.set_trace()
+        """
+        Basic testing procedure. Just checks that data exists.
+        """
+
+        for test in self.tests:
+            test_count = session.read.parquet(self.output_path +
+                                              test.table) \
+                        .count()
+            if test.test == "=":
+                test_pass = test_count == test.value
+            elif test.test == "<":
+                test_pass = test_count < test.value
+            elif test.test == ">":
+                test_pass = test_count > test.value
+
+            if not test_pass:
+                raise ValueError(f'Test of {test.table} failed')
+            else:
+                print(f'Test of {test.table} passed')
+
+        pass
+
+    def run_job(self, session):
+        """
+        - Get warc paths from s3
+        - Partition and process warc paths
+        - Transform results
+        - Save to s3
+        """
 
         # get all warc paths
         input_data = session \
             .sparkContext \
-            .textFile(f's3a://{self.s3_bucket}/{self.warc_gz_path}')
+            .textFile(f's3://{self.s3_bucket}/{self.warc_gz_path}')
 
         # when running locally, operate on subset of paths
         if self.local_test:
@@ -139,8 +176,21 @@ class NewsJob(MySparkJob):
         sites = news_df \
             .selectExpr('domain', 'language.result as languages') \
             .distinct()
-        # sites.write \
-        #      .mode('overwrite').parquet(self.output_path + 'sites_table/')
+        sites.write \
+             .mode('overwrite').parquet(self.output_path + 'sites_table/')
+
+        # get metadata for each domain
+        cc_index = session.read.parquet(f's3://{self.s3_bucket}/'
+                                        '{self.index_path}')
+        news_domains = sites.select('domain').distinct().collect()
+        domains = []
+        for row in news_domains:
+            domains.append(re.sub('www.', '', row['domain']))
+        news_index = cc_index.filter(cc_index
+                                     .url_host_registered_domain
+                                     .isin(domains))
+        news_index.write \
+                  .mode('overwrite').parquet(self.output_path + 'index_table/')
 
         # create dates table and write to s3
         dates = news_df.select(col('publish_date'),
@@ -169,10 +219,10 @@ class NewsJob(MySparkJob):
                                    'warc_date',
                                    "resultTuples['0'] as keyword",
                                    "resultTuples['1'].score as score")
-        # keywords.write \
-        #         .partitionBy('domain') \
-        #         .mode('overwrite') \
-        #         .parquet(self.output_path + 'keywords_table/')
+        keywords.write \
+                .partitionBy('domain') \
+                .mode('overwrite') \
+                .parquet(self.output_path + 'keywords_table/')
 
         pass
 

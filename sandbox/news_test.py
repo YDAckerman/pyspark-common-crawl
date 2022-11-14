@@ -8,40 +8,6 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import split, col, explode, desc
 from pyspark.sql.types import StructType, StructField, StringType
 
-import sparknlp # may need to (pip cache purge; pip install numpy --upgrade)
-from sparknlp.base import *
-from sparknlp.annotator import *
-from pyspark.ml import Pipeline
-
-import boto3
-import botocore
-import requests
-
-from warcio.archiveiterator import ArchiveIterator
-from warcio.recordloader import ArchiveLoadFailed
-
-from bs4 import BeautifulSoup
-
-from htmldate import find_date # may need to (pip uninstall lxml; pip install lxml)
-
-# from langdetect import detect
-
-from urllib.parse import urlparse
-
-# import sparknlp # may need to (pip cache purge; pip install numpy --upgrade)
-# from sparknlp.base import *
-# from sparknlp.annotator import *
-# from pyspark.ml import Pipeline
-
-# from sparknlp.base import *
-# from sparknlp.annotator import *
-# from sparknlp.pretrained import PretrainedPipeline
-# import sparknlp
-
-cc_bucket = 'commoncrawl'
-cc_segment_paths = 'crawl-data/*/segment.paths.gz'
-news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
-
 config = configparser.ConfigParser()
 config.read('./sandbox.cfg')
 

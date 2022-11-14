@@ -1,7 +1,4 @@
 
-# import re
-# import logging
-
 from tempfile import TemporaryFile
 
 from pyspark.sql import SparkSession
@@ -20,11 +17,14 @@ class MySparkJob():
     name = 'SparkJob'
     s3client = None
 
-    def __init__(self, s3_bucket, warc_gz_path, cfg_path,
-                 output_path, local_test=False):
-
+    def __init__(self, s3_bucket, warc_gz_path, index_path,
+                 cfg_path, output_path, local_test=False):
+        """
+        - Instantiate MySparkJob object
+        """
         self.s3_bucket = s3_bucket
         self.warc_gz_path = warc_gz_path
+        self.index_path = index_path
         self.output_path = output_path
         self.local_test = local_test
 
@@ -32,11 +32,20 @@ class MySparkJob():
         self.config.read(cfg_path)
 
     def get_s3_client(self):
+        """
+        - create/retrieve s3 client
+        """
         if not self.s3client:
             self.s3client = boto3.client('s3', use_ssl=False)
         return self.s3client
 
     def process_warcs(self, _id, iterator):
+        """
+        - Loop through paths in partition (iterator)
+        - Create stream from warc path (fetch_warc)
+        - Create iterator of warc records from binary stream (ArchiveIterator)
+        - Iterate through iterator of records
+        """
         for path in iterator:
             stream = self.fetch_warc(path)
             if not stream:
@@ -65,6 +74,10 @@ class MySparkJob():
         return stream
 
     def iterate_records(self, _warc_path, archive_iterator):
+        """
+        - iterate through warc records in archive iterator
+        - process each record
+        """
         for record in archive_iterator:
             for res in self.process_record(record):
                 yield res
@@ -77,14 +90,20 @@ class MySparkJob():
         """Run the Spark Job"""
         raise NotImplementedError('Running the job needs to be customized')
 
-    def run(self):
+    def run_tests(self, session):
+        """Run data tests"""
+        raise NotImplementedError('Testing the data needs to be customized')
 
+    def run(self):
+        """
+        - Start spark session
+        - Configure aws access
+        - run spark job
+        - run data tests
+        - close session
+        """
         session = SparkSession \
             .builder \
-            .config("spark.jars.packages",
-                    "com.johnsnowlabs.nlp:spark-nlp_2.11:1.8.2") \
-            .config('spark.jars.packages',
-                    'org.apache.hadoop:hadoop-aws:3.3.4') \
             .getOrCreate()
 
         session.sparkContext \
@@ -99,6 +118,7 @@ class MySparkJob():
                     self.config['AWS']['AWS_SECRET_ACCESS_KEY'])
 
         self.run_job(session)
+        self.run_tests(session)
 
         session.stop()
 
