@@ -14,7 +14,7 @@ def main():
 
     cc_bucket = 'commoncrawl'
     news_paths = 'crawl-data/CC-NEWS/*/*/warc.paths.gz'
-    index_path = 'cc-index/table/cc-main/warc/'
+    index_path = 'cc-index/table/cc-main/warc/crawl=CC-MAIN-2022-40/warc'
     output_path = 's3://commoncrawl-news-tables/'
     # args = parse_arguments()
     cfg_path = './aws.cfg'

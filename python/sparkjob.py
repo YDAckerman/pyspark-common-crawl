@@ -17,14 +17,13 @@ class MySparkJob():
     name = 'SparkJob'
     s3client = None
 
-    def __init__(self, s3_bucket, warc_gz_path, index_path,
-                 cfg_path, output_path, local_test=False):
+    def __init__(self, s3_bucket, warc_gz_path, cfg_path, output_path,
+                 local_test=False):
         """
         - Instantiate MySparkJob object
         """
         self.s3_bucket = s3_bucket
         self.warc_gz_path = warc_gz_path
-        self.index_path = index_path
         self.output_path = output_path
         self.local_test = local_test
 
@@ -118,7 +117,8 @@ class MySparkJob():
                     self.config['AWS']['AWS_SECRET_ACCESS_KEY'])
 
         self.run_job(session)
-        self.run_tests(session)
+
+        # self.run_tests(session)
 
         session.stop()
 

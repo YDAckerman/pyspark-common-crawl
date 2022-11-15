@@ -1,9 +1,9 @@
 
 class TableTest():
 
-    def __init__(self, table, test, value):
+    def __init__(self, table, operator, value):
         self.table = table
-        self.test = test
+        self.operator = operator
         self.value = value
 
     @property
@@ -15,12 +15,12 @@ class TableTest():
         self._table = value
 
     @property
-    def test(self):
-        return self._test
+    def operator(self):
+        return self._operator
 
-    @test.setter
-    def test(self, value):
-        self._test = value
+    @operator.setter
+    def operator(self, value):
+        self._operator = value
 
     @property
     def value(self):

@@ -14,6 +14,8 @@ provider "aws" {
   profile = "default"
 }
 
+variable "myIp" {}
+
 resource "aws_emr_cluster" "spark-cluster" {
   name          = "spark-cluster"
   release_label = "emr-6.6.0"
@@ -102,6 +104,15 @@ resource "aws_security_group" "allow_access" {
   tags = {
     name = "emr_test"
   }
+}
+
+resource "aws_security_group_rule" "example" {
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.main.cidr_block, var.myIp]
+  security_group_id = aws_security_group.allow_access.id
 }
 
 resource "aws_vpc" "main" {

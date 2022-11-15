@@ -34,8 +34,7 @@ class NewsJob(MySparkJob):
 
     tests = [TableTest('sites_table/', ">", 0),
              TableTest('dates_table/', ">", 0),
-             TableTest('keywords_table/', ">", 0),
-             TableTest('index_table/', ">", 0)]
+             TableTest('keywords_table/', ">", 0)]
 
     def process_record(self, record):
         """
@@ -131,11 +130,11 @@ class NewsJob(MySparkJob):
             test_count = session.read.parquet(self.output_path +
                                               test.table) \
                         .count()
-            if test.test == "=":
+            if test.operator == "=":
                 test_pass = test_count == test.value
-            elif test.test == "<":
+            elif test.operator == "<":
                 test_pass = test_count < test.value
-            elif test.test == ">":
+            elif test.operator == ">":
                 test_pass = test_count > test.value
 
             if not test_pass:
@@ -174,33 +173,22 @@ class NewsJob(MySparkJob):
         news_df = self.language_detect_pipeline().fit(news_df) \
                                                  .transform(news_df)
 
+        @udf(returnType=StringType())
+        def reverse_domain(s):
+            """
+            - removes ^www
+            - reverses what's left around '.'
+            """
+            s = '.'.join(re.sub('^www.', '', s).split(".")[-1::-1])
+            return s
+
         # create sites table and write to s3
         sites = news_df \
             .selectExpr('domain', 'language.result as languages') \
+            .withColumn('reverse_domain', reverse_domain('domain')) \
             .distinct()
         sites.write \
              .mode('overwrite').parquet(self.output_path + 'sites_table/')
-
-        # define function to remove www from domain
-        @udf(returnType=StringType())
-        def rm_www(s):
-            return re.sub('^www.', '', s)
-
-        # get news domains with www. prefix removed
-        news_domains = sites.select(rm_www('domain')
-                                    .alias('url_host_registered_domain')) \
-                            .distinct()
-
-        # get metadata for each domain
-        cc_index = session.read.parquet(f's3://{self.s3_bucket}/'
-                                        '{self.index_path}')
-
-        # filter metadata by news domains and save results to s3
-        news_index = cc_index.join(news_domains,
-                                   'url_host_registered_domain',
-                                   'leftsemi')
-        news_index.write \
-                  .mode('overwrite').parquet(self.output_path + 'index_table/')
 
         # create dates table and write to s3
         dates = news_df.select(col('publish_date'),
@@ -210,10 +198,10 @@ class NewsJob(MySparkJob):
                        .withColumn('year', year('date')) \
                        .withColumn('month', month('date')) \
                        .distinct()
-        dates.write \
-             .partitionBy('year', 'month') \
-             .mode('overwrite') \
-             .parquet(self.output_path + 'dates_table/')
+        # dates.write \
+        #      .partitionBy('year', 'month') \
+        #      .mode('overwrite') \
+        #      .parquet(self.output_path + 'dates_table/')
 
         # perform keyword extraction, create keywords table, write to s3
         keywords = self.keyword_extract_pipeline() \
@@ -229,10 +217,10 @@ class NewsJob(MySparkJob):
                                    'warc_date',
                                    "resultTuples['0'] as keyword",
                                    "resultTuples['1'].score as score")
-        keywords.write \
-                .partitionBy('domain') \
-                .mode('overwrite') \
-                .parquet(self.output_path + 'keywords_table/')
+        # keywords.write \
+        #         .partitionBy('domain') \
+        #         .mode('overwrite') \
+        #         .parquet(self.output_path + 'keywords_table/')
 
         pass
 
