@@ -19,11 +19,6 @@ cluster_dns=$(aws emr describe-cluster \
                   jq '.Cluster.MasterPublicDnsName' | \
            tr -d '"')
 
-# nmap, telnet
-
-# /etc/ip-tables
-
-
 scp -i ./aws-emr/terraform/testing-spark-cluster.pem ./python/* "hadoop@${cluster_dns}":~/.
 
 scp -i ./aws-emr/terraform/testing-spark-cluster.pem ./sandbox/sandbox.cfg "hadoop@${cluster_dns}":~/./aws.cfg

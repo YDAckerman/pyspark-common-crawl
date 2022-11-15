@@ -1,13 +1,13 @@
 import re
+
 from tabletest import TableTest
+from sparkjob import MySparkJob
 
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 # may need to (pip uninstall lxml; pip install lxml)
 from htmldate import find_date
-
-from sparkjob import MySparkJob
 
 from pyspark.sql.types import StructType, StructField, StringType
 from pyspark.sql.functions import col, explode, arrays_zip, to_date, \
@@ -198,10 +198,10 @@ class NewsJob(MySparkJob):
                        .withColumn('year', year('date')) \
                        .withColumn('month', month('date')) \
                        .distinct()
-        # dates.write \
-        #      .partitionBy('year', 'month') \
-        #      .mode('overwrite') \
-        #      .parquet(self.output_path + 'dates_table/')
+        dates.write \
+             .partitionBy('year', 'month') \
+             .mode('overwrite') \
+             .parquet(self.output_path + 'dates_table/')
 
         # perform keyword extraction, create keywords table, write to s3
         keywords = self.keyword_extract_pipeline() \
@@ -217,10 +217,10 @@ class NewsJob(MySparkJob):
                                    'warc_date',
                                    "resultTuples['0'] as keyword",
                                    "resultTuples['1'].score as score")
-        # keywords.write \
-        #         .partitionBy('domain') \
-        #         .mode('overwrite') \
-        #         .parquet(self.output_path + 'keywords_table/')
+        keywords.write \
+                .partitionBy('domain') \
+                .mode('overwrite') \
+                .parquet(self.output_path + 'keywords_table/')
 
         pass
 
