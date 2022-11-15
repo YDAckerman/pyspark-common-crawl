@@ -118,7 +118,7 @@ class MySparkJob():
 
         self.run_job(session)
 
-        # self.run_tests(session)
+        self.run_tests(session)
 
         session.stop()
 
