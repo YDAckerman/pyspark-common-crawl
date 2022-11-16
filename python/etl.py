@@ -19,10 +19,10 @@ def main():
     args = parse_arguments()
     cfg_path = 'aws.cfg' if not args.cfg_path else args.cfg_path
 
-    # news_job = NewsJob(output_path=output_path, s3_bucket=cc_bucket,
-    #                    warc_gz_paths=news_paths, cfg_path=cfg_path,
-    #                    local_test=True)
-    # news_job.run()
+    news_job = NewsJob(output_path=output_path, s3_bucket=cc_bucket,
+                       warc_gz_paths=news_paths, cfg_path=cfg_path,
+                       local_test=True)
+    news_job.run()
 
     graph_job = GraphJob(output_path=output_path,
                          cfg_path=cfg_path)
