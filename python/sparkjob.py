@@ -114,7 +114,7 @@ class MySparkJob():
             if not test_pass:
                 raise ValueError(f'Test of {test.table} failed')
             else:
-                print(f'Test of {test.table} passed')
+                print(f'Test of {test.table} passed with {test_count} rows')
 
         pass
 
@@ -142,7 +142,6 @@ class MySparkJob():
                     self.config['AWS']['AWS_SECRET_ACCESS_KEY'])
 
         self.run_job(session)
-
         self.run_tests(session)
 
         session.stop()

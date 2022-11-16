@@ -25,6 +25,6 @@ scp -i ./aws-emr/terraform/testing-spark-cluster.pem ./sandbox/sandbox.cfg "hado
 
 ssh -i ./aws-emr/terraform/testing-spark-cluster.pem "hadoop@${cluster_dns}"
 
-zip my_python_files newsjob.py sparkjob.py tabletest.py
+zip my_python_files graphjob.py newsjob.py sparkjob.py tabletest.py
 
 spark-submit --py-files my_python_files.zip etl.py
