@@ -49,7 +49,7 @@ class GraphJob(MySparkJob):
         - filter down edges to those containing an english news node id
         - write nodes and english-news node-edges to s3
         """
-        
+
         sites = session.read.parquet(self.output_path + 'sites_table/')
         english_nodes = sites \
             .filter(array_contains(sites.languages, "en")) \
