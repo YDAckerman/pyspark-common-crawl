@@ -21,4 +21,21 @@ events (i.e. elections).
 ![alt text](./Data_Model.png?raw=true)
 
 
+# Technologies
+
+The core technology used in this project is AWS EMR. The EMR cluster
+is provisioned using Terraform and runs an ETL script written in
+Python. 
+
+The ETL script makes heavy use of the [cc-spark
+library](https://github.com/commoncrawl/cc-pyspark), pyspark, and
+[spark-nlp](https://nlp.johnsnowlabs.com/). 
+
+The bootstrap and startup
+scripts are written in bash, but are very basic. 
+
+Lastly, data is read
+from and written to AWS s3. 
+
+
 
