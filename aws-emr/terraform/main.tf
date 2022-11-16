@@ -37,7 +37,7 @@ resource "aws_emr_cluster" "spark-cluster" {
   
   core_instance_group {
     instance_type = "m6i.xlarge"
-    instance_count = 2
+    instance_count = 5
   }
 
   bootstrap_action {

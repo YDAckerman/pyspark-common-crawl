@@ -120,30 +120,6 @@ class NewsJob(MySparkJob):
 
         return pipeline
 
-    def run_tests(self, session):
-
-        """
-        Basic testing procedure. Just checks that data exists.
-        """
-
-        for test in self.tests:
-            test_count = session.read.parquet(self.output_path +
-                                              test.table) \
-                        .count()
-            if test.operator == "=":
-                test_pass = test_count == test.value
-            elif test.operator == "<":
-                test_pass = test_count < test.value
-            elif test.operator == ">":
-                test_pass = test_count > test.value
-
-            if not test_pass:
-                raise ValueError(f'Test of {test.table} failed')
-            else:
-                print(f'Test of {test.table} passed')
-
-        pass
-
     def run_job(self, session):
         """
         - Get warc paths from s3

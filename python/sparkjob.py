@@ -16,9 +16,10 @@ class MySparkJob():
 
     name = 'SparkJob'
     s3client = None
+    tests = []
 
-    def __init__(self, s3_bucket, warc_gz_path, cfg_path, output_path,
-                 local_test=False):
+    def __init__(self, output_path, s3_bucket='', warc_gz_path='',
+                 cfg_path='', local_test=False):
         """
         - Instantiate MySparkJob object
         """
@@ -90,8 +91,32 @@ class MySparkJob():
         raise NotImplementedError('Running the job needs to be customized')
 
     def run_tests(self, session):
-        """Run data tests"""
-        raise NotImplementedError('Testing the data needs to be customized')
+        """
+        Basic testing procedure. Just checks that data exists.
+        """
+
+        if self.tests == []:
+            print('Nothing to test')
+            pass
+
+        test_pass = False
+        for test in self.tests:
+            test_count = session.read.parquet(self.output_path +
+                                              test.table) \
+                        .count()
+            if test.operator == "=":
+                test_pass = test_count == test.value
+            elif test.operator == "<":
+                test_pass = test_count < test.value
+            elif test.operator == ">":
+                test_pass = test_count > test.value
+
+            if not test_pass:
+                raise ValueError(f'Test of {test.table} failed')
+            else:
+                print(f'Test of {test.table} passed')
+
+        pass
 
     def run(self):
         """
