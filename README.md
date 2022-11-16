@@ -18,8 +18,7 @@ events (i.e. elections).
 
 # Data Model
 
-![alt text](https://github.com/YDAckerman/pyspark-common-crawl
-/Data_Model.png?raw=true)
+![alt text](./Data_Model.png?raw=true)
 
 
 
