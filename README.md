@@ -43,7 +43,8 @@ module](https://github.com/commoncrawl/cc-pyspark), pyspark, and
 [spark-nlp](https://nlp.johnsnowlabs.com/). 
 
 The bootstrap and startup
-scripts are written in bash, but are very basic. 
+scripts are written in bash, but are very basic. They do require that
+your system as the aws cli installed. 
 
 Lastly, data is read
 from and written to AWS s3. 
