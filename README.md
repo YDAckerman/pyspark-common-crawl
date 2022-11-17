@@ -39,7 +39,7 @@ is provisioned using Terraform and runs an ETL script written in
 Python. 
 
 The ETL script makes heavy use of the [cc-spark
-library](https://github.com/commoncrawl/cc-pyspark), pyspark, and
+module](https://github.com/commoncrawl/cc-pyspark), pyspark, and
 [spark-nlp](https://nlp.johnsnowlabs.com/). 
 
 The bootstrap and startup
