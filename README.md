@@ -79,17 +79,21 @@ bootstrap.sh and getting the correct configuration json in main.tf
 (there is a good example on the spark-nlp website). 
 
 Understanding the cc-spark module and pulling out only the things I
-specifically wanted came next. I don't think this was strictly
-necessary. But as I both wanted to better understand the module's
+specifically wanted came next. This was not at all necessary. cc-spark
+can pretty much be used off the shelf, as long as you've got your
+cluster provisioned properly. But as I both wanted to better understand the module's
 structure and get more experience writing/testing code myself,
 it's what I ended up doing. I would not have been able to approach
-this problem without heavily drawing on cc-spark code. 
+this problem without heavily drawing on cc-spark code. In some places
+I use their code pretty much verbatim.
 
 Once I could comfortably access/process the .warc files on EMR, I went
 about getting spark-nlp algorithms for language detection and keyword
 extraction working. This ultimately involved setting up the correct
 version of EMR and including the correct .jars paths in the
-main.tf configuration json. 
+main.tf configuration json. I only did off-the-shelf things with
+spark-nlp. I used the language detection and yakekeywordextraction
+example pipelines verbatim. 
 
 The final steps were to write the newsjob and graphjob classes, test
 them, and then organize the whole ETL process into etl.py
