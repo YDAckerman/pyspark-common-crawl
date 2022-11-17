@@ -54,12 +54,16 @@ from and written to AWS s3.
 Code and commented instructions for setup are provided in 
 aws-emr/bash/startup.sh. 
 
-Sidenote: the NewsJob instance in etl.py is currently set to
+The NewsJob instance in etl.py is currently set to
 localTest=True. If you set it to False or remove it, you will need to
 scale up the number of worker nodes and consider changing the number
 of data partitions within the NewsJob run_job() function. Even with
 the test settings, my run of the script took 8+ hours to complete and
 cost me approximately $10 in aws fees. 
+
+The output_path in etl.py is currently set to one of my s3 buckets. You
+will need to create your own bucket and change this variable before
+running this yourself. 
 
 # Process
 
