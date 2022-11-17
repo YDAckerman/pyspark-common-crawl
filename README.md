@@ -20,6 +20,11 @@ Note: the nodes in the Edges portion of the dataset are drawn only
 from news domains that use English and domains linking directly to or from
 them. 
 
+Finally: this is a capstone project for the Udacity Data Engineering
+Nanodegree. Unlike the other course projects, this one is entirely of
+my own design. Thank you to Udacity for an excellent learning
+experience and the mentor feedback along the way. 
+
 # Original Data Source
 
 The data is drawn from the [commoncrawl](https://commoncrawl.org/)
@@ -129,7 +134,8 @@ quite a few unknown-unknowns and thus necessary re-designs.
    would then need to be adjusted (in the case of airflow) to
    only pull that day's news crawl using context variables. I have not
    set up an airflow EMR operator, so I'd need to figure that out and
-   how it interacts with terraform to create and destroy the cluster. 
+   how it interacts with terraform to create and destroy the
+   cluster. 
 3. If the database needed to be accessed by 100 people, I think the
    main issue would be controlling permissions via IAM roles. Given
    that the data is on s3, I don't think there would be an issue. Load
