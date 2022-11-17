@@ -8,7 +8,7 @@ geared toward queries tracking keyword emergence and life-cycle.
 For example, it should be easy to write a query to track the emergence
 of the keywords "Climate Change" and discover when and where they
 emerged; how their use developed in the context of the whole
-text-news ecosystem; and what non-news domains were linked (via
+text-news ecosystem over time; and what non-news domains were linked (via
 literal hyperlink) to their use. 
 
 I am particularly interested in using this dataset to see how
