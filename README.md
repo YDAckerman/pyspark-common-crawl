@@ -110,7 +110,12 @@ quite a few unknown-unknowns and thus necessary re-designs.
       partitions (at session.sparkContext.textFile) and
       add more workers to the cluster. If the individual .warc files
       increased 100x in size, we would need to increase the RAM on the
-      EMR nodes. 
+      EMR nodes. If the individuals .warc files got too big for our
+      budget or (something like that), we could use the cc-index
+      parquet tables to figure out which .warc files contain the data
+      we want, then use the data segments .warc files (limited to
+      10000 records a piece) to access the records we want. This,
+      however, would require filtering out non-news-domain records.
     - As of now, there are not that many news sites in the commoncrawl
       dataset. Because of this, I made a .collect() call in the
       graphjob and used the results to filter the graph nodes. If this
