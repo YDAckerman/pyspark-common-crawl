@@ -107,6 +107,11 @@ Sidenote: the actual process was not this linear. I tried
 designing the project a-priori as best as I could, but I ran into
 quite a few unknown-unknowns and thus necessary re-designs. 
 
+# Results
+
+Please see ./query_scipt.py for some ideas about how to interact
+with the pipeline's output.
+
 # Follow Up
 
 1. If data were scaled up 100x: 
