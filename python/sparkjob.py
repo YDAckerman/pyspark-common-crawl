@@ -60,6 +60,10 @@ class MySparkJob():
                 stream.close()
 
     def fetch_warc(self, path):
+        """
+        - write file from warc path to a temporary file
+        - return the temp file containing warc data
+        """
         warctemp = TemporaryFile(mode='w+b')
         stream = None
         # self.get_logger().info('Reading from S3 {}'.format(path))
