@@ -2,9 +2,9 @@
 class TableTest():
 
     def __init__(self, table, operator, value):
-        self.table = table
-        self.operator = operator
-        self.value = value
+        self._table = table
+        self._operator = operator
+        self._value = value
 
     @property
     def table(self):
